@@ -2,7 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from lxml import etree
-
+import copy
 import core.nodes.base
 import core.nodes.physical
 from core.emane.nodes import EmaneNet
@@ -607,6 +607,18 @@ class CoreXmlReader:
         self.read_configservice_configs()
         self.read_links()
 
+    # save node attributes in session.ntwk_node_attr[][]
+    # examples of node types: HUB, SWITCH, ROUTER, PC, HOST
+    def save_ntwk_node_attributes(self, node_id, node_name, node_type):
+        ntwk_node_attr_tmp = copy.deepcopy(self.session.ntwk_node_attr_defaults)
+
+        # replace defaults with current values
+        ntwk_node_attr_tmp[self.session.ntwk_node_attr_key['node_id']] = node_id
+        ntwk_node_attr_tmp[self.session.ntwk_node_attr_key['node_name']] = str(node_name)
+        ntwk_node_attr_tmp[self.session.ntwk_node_attr_key['node_type']] = str(node_type)
+
+        self.session.ntwk_node_attr.append(ntwk_node_attr_tmp)
+
     def read_default_services(self) -> None:
         default_services = self.scenario.find("default_services")
         if default_services is None:
@@ -820,6 +832,8 @@ class CoreXmlReader:
         options = NodeOptions(name, model, image)
         options.icon = icon
 
+        self.save_ntwk_node_attributes(node_id, str(name), str(model))
+
         node_type = NodeTypes.DEFAULT
         if clazz == "docker":
             node_type = NodeTypes.DOCKER
@@ -859,6 +873,8 @@ class CoreXmlReader:
         icon = network_element.get("icon")
         options = NodeOptions(name)
         options.icon = icon
+
+        self.save_ntwk_node_attributes(node_id, str(name), str(node_type).strip("NodeTypes."))
 
         position_element = network_element.find("position")
         if position_element is not None:
